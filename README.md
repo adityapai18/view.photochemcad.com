@@ -1,36 +1,101 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PhotochemCAD Spectrum Comparison Dashboard
+
+A Next.js dashboard for comparing absorption and emission spectra of multiple compounds from the PhotochemCAD database.
+
+## Features
+
+- **Compound Search**: Search and select compounds from the PhotochemCAD database
+- **Spectrum Comparison**: Compare absorption and emission spectra of multiple compounds
+- **Interactive Charts**: Beautiful, responsive charts using Recharts
+- **Data Export**: Export comparison data as CSV files
+- **Modern UI**: Built with shadcn/ui components for a clean, modern interface
+
+## Technology Stack
+
+- **Next.js 15** - React framework
+- **TypeScript** - Type safety
+- **Tailwind CSS** - Styling
+- **shadcn/ui** - UI components
+- **Recharts** - Chart library
+- **better-sqlite3** - SQLite database access
+- **Lucide React** - Icons
+
+## Database Schema
+
+The application connects to a SQLite database with the following key tables:
+
+- `compounds` - Compound information and metadata
+- `compounds_absorptions` - Absorption spectrum data
+- `compounds_emissions` - Emission spectrum data
 
 ## Getting Started
 
-First, run the development server:
+1. **Install dependencies**:
+   ```bash
+   npm install
+   ```
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+2. **Start the development server**:
+   ```bash
+   npm run dev
+   ```
+
+3. **Open your browser** and navigate to `http://localhost:3000`
+
+## Usage
+
+1. **Select Spectrum Type**: Choose between "Absorption" or "Emission" spectra
+2. **Search Compounds**: Use the search box to find compounds with available data
+3. **Add Compounds**: Click on compounds to add them to the comparison
+4. **View Charts**: The interactive chart will display all selected compounds
+5. **Export Data**: Download the comparison data as a CSV file
+
+## API Endpoints
+
+- `GET /api/compounds?q=<query>` - Search compounds
+- `GET /api/spectra?compoundId=<id>&type=<absorption|emission>` - Get spectrum data
+
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── api/
+│   │   ├── compounds/route.ts
+│   │   └── spectra/route.ts
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── page.tsx
+├── components/
+│   ├── ui/          # shadcn/ui components
+│   ├── compound-selector.tsx
+│   └── spectrum-chart.tsx
+├── database/
+│   └── photochemcad.sqlite
+└── lib/
+    ├── database.ts
+    └── utils.ts
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Database Setup
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The application expects a SQLite database file at `src/database/photochemcad.sqlite` with the PhotochemCAD schema. The database should contain:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Compound information with absorption/emission data flags
+- Absorption spectrum data (wavelength, coefficient)
+- Emission spectrum data (wavelength, normalized intensity)
 
-## Learn More
+## Development
 
-To learn more about Next.js, take a look at the following resources:
+- **TypeScript**: Full type safety throughout the application
+- **ESLint**: Code linting and formatting
+- **Hot Reload**: Fast development with Next.js hot reload
+- **API Routes**: Server-side API endpoints for database access
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deployment
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The application can be deployed to Vercel, Netlify, or any other Next.js-compatible hosting platform.
 
-## Deploy on Vercel
+## License
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This project is for educational and research purposes related to photochemistry and spectroscopy.
