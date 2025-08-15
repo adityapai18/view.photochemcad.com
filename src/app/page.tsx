@@ -1,13 +1,23 @@
 import { Suspense } from 'react';
 import { SpectrumDashboard } from '@/components/pages/spectrum-dashboard';
-import { getCompounds, getAbsorptionData, getEmissionData, getCompoundFromId } from '@/lib/database';
+import { getCompounds, getAbsorptionData, getEmissionData, getCompoundFromId, EmissionData, AbsorptionData, getDatabases } from '@/lib/database';
+
+interface Compound {
+  id: string;
+  name: string;
+  slug: string;
+  database_name: string;
+  category_name: string;
+  has_absorption_data: string;
+  has_emission_data: string;
+}
 
 interface SearchParams {
   [key: string]: string | string[] | undefined;
 }
 
-async function getInitialSpectra(searchParams: SearchParams) {
-  const spectra: any[] = [];
+function getInitialSpectra(searchParams: SearchParams) {
+  const spectra: { compound: Compound, type: "absorption" | "emission", data: EmissionData[] | AbsorptionData[] }[] = [];
 
   // Find all spectrum parameters regardless of numbering
   Object.entries(searchParams).forEach(([key, value]) => {
@@ -29,10 +39,10 @@ async function getInitialSpectra(searchParams: SearchParams) {
           data = getEmissionData(compoundId);
         }
 
-        if (data && data.length > 0) {
+        if (compound && data && data.length > 0) {
           spectra.push({
             compound,
-            type,
+            type: type as "absorption" | "emission",
             data
           });
         }
@@ -52,10 +62,12 @@ export default async function Home({
 }) {
 
   const params = await searchParams;
-  const initialSpectra = await getInitialSpectra(params);
+  const initialSpectra = getInitialSpectra(params);
+  const databases = getDatabases();
+
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <SpectrumDashboard selectedSpectra={initialSpectra} />
+      <SpectrumDashboard selectedSpectra={initialSpectra} databases={databases} />
     </Suspense>
   );
 }

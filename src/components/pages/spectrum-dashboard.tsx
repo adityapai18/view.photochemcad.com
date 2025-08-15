@@ -4,25 +4,35 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CompoundSelector } from '../compound-selector';
+import { DatabaseBrowser } from '../database-browser';
 import { SpectrumChart } from '../spectrum-chart';
 
+interface Compound {
+  id: string;
+  name: string;
+  slug: string;
+  database_name: string;
+  category_name: string;
+  has_absorption_data: string;
+  has_emission_data: string;
+}
+
+interface SelectedSpectrum {
+  compound: Compound;
+  type: 'absorption' | 'emission';
+  data: any[];
+}
+
+interface SpectrumDashboardProps {
+  selectedSpectra?: SelectedSpectrum[];
+  databases?: { name: string; count: number }[];
+}
 
 
-export function SpectrumDashboard({ selectedSpectra = [] }: SpectrumDashboardProps) {
+
+export function SpectrumDashboard({ selectedSpectra = [], databases = [] }: SpectrumDashboardProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-
-  // Update URL when selectedSpectra changes (for sharing)
-  // useEffect(() => {
-  //   const params = new URLSearchParams();
-  //   selectedSpectra.forEach((spectrum, index) => {
-  //     params.append(`spectrum${index}`, `${spectrum.compound.id}:${spectrum.type}`);
-  //   });
-
-  //   const newUrl = params.toString() ? `?${params.toString()}` : '';
-  //   router.replace(newUrl, { scroll: false });
-  // }, [selectedSpectra, router]);
 
   const handleSpectrumAdd = async (spectrum: { compound: Compound; type: 'absorption' | 'emission' }) => {
     // Get current spectra from URL params
@@ -55,7 +65,7 @@ export function SpectrumDashboard({ selectedSpectra = [] }: SpectrumDashboardPro
   const handleSpectrumRemove = (compoundId: string, type: 'absorption' | 'emission') => {
     // Get current spectra from URL params
     const params = new URLSearchParams(window.location.search);
-    
+
     // Remove spectrum param
     for (const [key, value] of params.entries()) {
       if (key.startsWith('spectrum')) {
@@ -118,24 +128,6 @@ export function SpectrumDashboard({ selectedSpectra = [] }: SpectrumDashboardPro
             Compare absorption and emission spectra from the PhotochemCAD database
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={exportData}
-            disabled={selectedSpectra.length === 0}
-          >
-            Export CSV
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => {
-              const url = window.location.href;
-              navigator.clipboard.writeText(url);
-            }}
-          >
-            Share Link
-          </Button>
-        </div>
       </div>
 
 
@@ -144,7 +136,8 @@ export function SpectrumDashboard({ selectedSpectra = [] }: SpectrumDashboardPro
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Compound Selector */}
         <div className="lg:col-span-1">
-          <CompoundSelector
+          <DatabaseBrowser
+            databases={databases}
             onSpectrumAdd={handleSpectrumAdd}
             onSpectrumRemove={handleSpectrumRemove}
             selectedSpectra={selectedSpectra}

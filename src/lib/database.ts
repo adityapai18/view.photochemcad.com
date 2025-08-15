@@ -80,6 +80,48 @@ export function getEmissionData(compoundId: string): EmissionData[] {
   return stmt.all(compoundId) as EmissionData[];
 }
 
+export function getDatabases(): { name: string; count: number }[] {
+  const db = getDatabase();
+  const stmt = db.prepare(`
+    SELECT database_name, COUNT(*) as count
+    FROM compounds 
+    WHERE (has_absorption_data = '1' OR has_emission_data = '1')
+    GROUP BY database_name
+    ORDER BY database_name
+  `);
+  const results = stmt.all() as { database_name: string; count: number }[];
+  return results.map(r => ({ name: r.database_name, count: r.count }));
+}
+
+export function getCompoundsByDatabase(databaseName: string, limit: number = 15): Compound[] {
+  const db = getDatabase();
+  const stmt = db.prepare(`
+    SELECT id, name, slug, database_name, category_name, 
+           has_absorption_data, has_emission_data
+    FROM compounds 
+    WHERE database_name = ? AND (has_absorption_data = '1' OR has_emission_data = '1')
+    ORDER BY name
+    LIMIT ?
+  `);
+  return stmt.all(databaseName, limit) as Compound[];
+}
+
+export function searchCompoundsInDatabase(databaseName: string, query: string): Compound[] {
+  const db = getDatabase();
+  const stmt = db.prepare(`
+    SELECT id, name, slug, database_name, category_name, 
+           has_absorption_data, has_emission_data
+    FROM compounds 
+    WHERE database_name = ? AND (has_absorption_data = '1' OR has_emission_data = '1')
+    AND (name LIKE ? OR id LIKE ?)
+    ORDER BY name
+    LIMIT 50
+  `);
+  const searchTerm = `%${query}%`;
+  const results = stmt.all(databaseName, searchTerm, searchTerm) as Compound[];
+  return results;
+}
+
 export function searchCompounds(query: string): Compound[] {
   const db = getDatabase();
   const stmt = db.prepare(`

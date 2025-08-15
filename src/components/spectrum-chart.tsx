@@ -1,9 +1,10 @@
 'use client';
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceArea } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
+import { ZoomIn, RotateCcw } from 'lucide-react';
 
 interface SpectrumData {
   compound_id: string;
@@ -46,6 +47,56 @@ const COLORS = [
 
 export function SpectrumChart({ data, isLoading }: SpectrumChartProps) {
   const [isNormalized, setIsNormalized] = useState(false);
+  
+  // Zoom state following the working example pattern
+  const [zoomState, setZoomState] = useState({
+    left: 'dataMin',
+    right: 'dataMax',
+    refAreaLeft: '',
+    refAreaRight: '',
+    top: 'dataMax+1',
+    bottom: 'dataMin-1',
+    animation: true,
+  });
+
+  // Zoom functions following the working example pattern
+  const zoom = () => {
+    let { refAreaLeft, refAreaRight } = zoomState;
+
+    if (refAreaLeft === refAreaRight || refAreaRight === '') {
+      setZoomState(prevState => ({
+        ...prevState,
+        refAreaLeft: '',
+        refAreaRight: '',
+      }));
+      return;
+    }
+
+    // xAxis domain
+    if (refAreaLeft > refAreaRight) [refAreaLeft, refAreaRight] = [refAreaRight, refAreaLeft];
+
+    setZoomState(prevState => ({
+      ...prevState,
+      refAreaLeft: '',
+      refAreaRight: '',
+      left: refAreaLeft,
+      right: refAreaRight,
+    }));
+  };
+
+  const zoomOut = () => {
+    setZoomState(prevState => ({
+      ...prevState,
+      refAreaLeft: '',
+      refAreaRight: '',
+      left: 'dataMin',
+      right: 'dataMax',
+      top: 'dataMax+1',
+      bottom: 'dataMin-1',
+    }));
+  };
+
+  const { left, right, refAreaLeft, refAreaRight, animation } = zoomState;
 
   if (isLoading) {
     return (
@@ -166,22 +217,50 @@ export function SpectrumChart({ data, isLoading }: SpectrumChartProps) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Spectrum Comparison</CardTitle>
-          <Button
-            variant={isNormalized ? "default" : "outline"}
-            size="sm"
-            onClick={() => setIsNormalized(!isNormalized)}
-          >
-            {isNormalized ? "Show Raw Data" : "Normalize (0-1)"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={zoomOut}
+              title="Reset zoom"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={isNormalized ? "default" : "outline"}
+              size="sm"
+              onClick={() => setIsNormalized(!isNormalized)}
+            >
+              {isNormalized ? "Show Raw Data" : "Normalize (0-1)"}
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={400}>
-          <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+          <LineChart 
+            data={chartData} 
+            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+            onMouseDown={(e) => setZoomState(prevState => ({ ...prevState, refAreaLeft: e.activeLabel ?? '' }))}
+            onDoubleClick={() => setZoomState({
+              left: 'dataMin',
+              right: 'dataMax',
+              refAreaLeft: '',
+              refAreaRight: '',
+              top: 'dataMax+1',
+              bottom: 'dataMin-1',
+              animation: true,
+            })}
+            onMouseMove={(e) => zoomState.refAreaLeft && setZoomState(prevState => ({ ...prevState, refAreaRight: e.activeLabel ?? '' }))}
+            onMouseUp={zoom}
+          >
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis 
               dataKey="wavelength" 
               label={{ value: 'Wavelength (nm)', position: 'insideBottom', offset: -10 }}
+              allowDataOverflow
+              domain={[left, right]}
+              type="number"
             />
             <YAxis 
               label={{ 
@@ -189,6 +268,8 @@ export function SpectrumChart({ data, isLoading }: SpectrumChartProps) {
                 angle: -90, 
                 position: 'insideLeft' 
               }}
+              allowDataOverflow
+              type="number"
             />
             <Tooltip 
               formatter={(value, name) => [
@@ -209,15 +290,18 @@ export function SpectrumChart({ data, isLoading }: SpectrumChartProps) {
                   dataKey={dataKey}
                   stroke={color}
                   strokeWidth={2}
-                  // strokeDasharray={lineStyle === 'dashed' ? '5,5' : 
-                  //                  lineStyle === 'dotted' ? '2,2' : '0'}
                   dot={{ r: 1, fill: color }}
                   activeDot={{ r: 4, stroke: color, strokeWidth: 1 }}
                   connectNulls={true}
                   name={`${compound.name} (${type})`}
+                  animationDuration={animation ? 300 : 0}
                 />
               );
             })}
+            
+            {refAreaLeft && refAreaRight ? (
+              <ReferenceArea x1={refAreaLeft} x2={refAreaRight} strokeOpacity={0.3} />
+            ) : null}
           </LineChart>
         </ResponsiveContainer>
       </CardContent>
