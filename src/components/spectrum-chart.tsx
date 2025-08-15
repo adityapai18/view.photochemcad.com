@@ -3,8 +3,9 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceArea } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { ZoomIn, RotateCcw } from 'lucide-react';
+import { DistributionParams, calculateDistribution, normalizeDistribution } from '@/lib/distributions';
 
 interface SpectrumData {
   compound_id: string;
@@ -32,6 +33,7 @@ interface SelectedSpectrum {
 interface SpectrumChartProps {
   data: SelectedSpectrum[];
   isLoading?: boolean;
+  distributions?: DistributionParams[];
 }
 
 const COLORS = [
@@ -45,7 +47,13 @@ const COLORS = [
   '#84cc16', // lime
 ];
 
-export function SpectrumChart({ data, isLoading }: SpectrumChartProps) {
+const DISTRIBUTION_COLORS = [
+  '#dc2626', // red-600
+  '#ea580c', // orange-600
+  '#d97706', // amber-600
+];
+
+export function SpectrumChart({ data, isLoading, distributions = [] }: SpectrumChartProps) {
   const [isNormalized, setIsNormalized] = useState(false);
   
   // Zoom state following the working example pattern
@@ -97,6 +105,19 @@ export function SpectrumChart({ data, isLoading }: SpectrumChartProps) {
   };
 
   const { left, right, refAreaLeft, refAreaRight, animation } = zoomState;
+
+  // Calculate distribution data
+  const distributionData = useMemo(() => {
+    if (distributions.length === 0) return [];
+    
+    return distributions.map(params => {
+      const rawDistribution = calculateDistribution(params);
+      return {
+        params,
+        data: isNormalized ? normalizeDistribution(rawDistribution) : rawDistribution
+      };
+    });
+  }, [distributions, isNormalized]);
 
   if (isLoading) {
     return (
@@ -158,10 +179,15 @@ export function SpectrumChart({ data, isLoading }: SpectrumChartProps) {
   // Transform data for Recharts - simpler approach
   const chartData: any[] = [];
   
-  // Get all unique wavelengths from all spectra
+  // Get all unique wavelengths from all spectra and distribution
   const allWavelengths = new Set<number>();
   validData.forEach(({ data: spectrumData }) => {
     spectrumData.forEach(point => allWavelengths.add(point.wavelength));
+  });
+  
+  // Add distribution wavelengths if available
+  distributionData.forEach(({ data }) => {
+    data.forEach(point => allWavelengths.add(point.wavelength));
   });
   
   // Sort wavelengths
@@ -206,6 +232,15 @@ export function SpectrumChart({ data, isLoading }: SpectrumChartProps) {
         }
         
         dataPoint[`${compound.name} (${type})`] = value;
+      }
+    });
+    
+    // Add distribution data if available
+    distributionData.forEach(({ params, data }) => {
+      const distributionPoint = data.find(p => p.wavelength === wavelength);
+      if (distributionPoint) {
+        const distributionName = `${params.type.charAt(0).toUpperCase() + params.type.slice(1)} Distribution ${distributions.indexOf(params) + 1}`;
+        dataPoint[distributionName] = distributionPoint.intensity;
       }
     });
     
@@ -294,6 +329,28 @@ export function SpectrumChart({ data, isLoading }: SpectrumChartProps) {
                   activeDot={{ r: 4, stroke: color, strokeWidth: 1 }}
                   connectNulls={true}
                   name={`${compound.name} (${type})`}
+                  animationDuration={animation ? 300 : 0}
+                />
+              );
+            })}
+            
+            {/* Distribution lines */}
+            {distributionData.map(({ params, data }, index) => {
+              const distributionName = `${params.type.charAt(0).toUpperCase() + params.type.slice(1)} Distribution ${index + 1}`;
+              const color = DISTRIBUTION_COLORS[index % DISTRIBUTION_COLORS.length];
+              
+              return (
+                <Line
+                  key={`distribution-${index}`}
+                  type="monotone"
+                  dataKey={distributionName}
+                  stroke={color}
+                  strokeWidth={3}
+                  strokeDasharray="5 5"
+                  dot={false}
+                  activeDot={{ r: 4, stroke: color, strokeWidth: 1 }}
+                  connectNulls={true}
+                  name={distributionName}
                   animationDuration={animation ? 300 : 0}
                 />
               );

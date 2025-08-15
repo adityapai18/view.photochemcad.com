@@ -6,7 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Search, Database } from 'lucide-react';
+import { Search, Database, X, Image as ImageIcon } from 'lucide-react';
+import Image from 'next/image';
+import { slugify } from '@/lib/helpers';
 
 interface Compound {
   id: string;
@@ -133,6 +135,11 @@ export function DatabaseBrowser({ onSpectrumAdd, onSpectrumRemove, selectedSpect
     return () => clearTimeout(timeoutId);
   };
 
+  // Helper function to get compound structure image path
+  const getCompoundImagePath = (compound: Compound) => {
+    return `/database/${slugify(compound.database_name)}/${slugify(compound.id)}/${slugify(compound.id)}.structure.png`;
+  };
+
   return (
     <div className="space-y-4">
       {/* Database Browser with Accordion */}
@@ -180,7 +187,7 @@ export function DatabaseBrowser({ onSpectrumAdd, onSpectrumRemove, selectedSpect
 
                     {/* Compounds list */}
                     {databaseCompounds[database.name] && databaseCompounds[database.name].length > 0 && (
-                      <div className="max-h-60 overflow-y-auto space-y-2">
+                      <div className="max-h-80 overflow-y-auto space-y-2">
                         {databaseCompounds[database.name].map((compound) => (
                           <div
                             key={compound.id}
@@ -188,12 +195,36 @@ export function DatabaseBrowser({ onSpectrumAdd, onSpectrumRemove, selectedSpect
                               }`}
                             onClick={() => handleCompoundClick(compound)}
                           >
-                            <div className="flex items-center justify-between">
-                              <div className="flex-1">
-                                <div className="font-medium">{compound.name}</div>
-                                <div className="text-sm text-muted-foreground">{compound.id}</div>
+                            <div className="flex items-center gap-3">
+                              {/* Compound Structure Image */}
+                              <div className="flex-shrink-0 w-16 h-16 border rounded-lg overflow-hidden bg-muted/20 flex items-center justify-center relative">
+                                <Image
+                                  src={getCompoundImagePath(compound)}
+                                  alt={`Structure of ${compound.name}`}
+                                  width={64}
+                                  height={64}
+                                  className="object-contain w-full h-full"
+                                  onError={(e) => {
+                                    // Fallback to icon if image fails to load
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    target.nextElementSibling?.classList.remove('hidden');
+                                  }}
+                                />
+                                <ImageIcon className="h-6 w-6 text-muted-foreground hidden" />
                               </div>
-                              <div className="flex items-center gap-2">
+                              
+                              {/* Compound Info */}
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium truncate">{compound.name}</div>
+                                <div className="text-sm text-muted-foreground">{compound.id}</div>
+                                <div className="text-xs text-muted-foreground capitalize">
+                                  {compound.category_name}
+                                </div>
+                              </div>
+                              
+                              {/* Spectrum Checkboxes */}
+                              <div className="flex items-center gap-2 flex-shrink-0">
                                 <div className="flex items-center gap-1">
                                   <Checkbox
                                     id={`absorption-${compound.id}`}
@@ -205,7 +236,7 @@ export function DatabaseBrowser({ onSpectrumAdd, onSpectrumRemove, selectedSpect
                                   />
                                   <label
                                     htmlFor={`absorption-${compound.id}`}
-                                    className="text-xs cursor-pointer"
+                                    className="text-xs cursor-pointer font-medium"
                                     onClick={(e) => e.stopPropagation()}
                                   >
                                     Abs
@@ -222,7 +253,7 @@ export function DatabaseBrowser({ onSpectrumAdd, onSpectrumRemove, selectedSpect
                                   />
                                   <label
                                     htmlFor={`emission-${compound.id}`}
-                                    className="text-xs cursor-pointer"
+                                    className="text-xs cursor-pointer font-medium"
                                     onClick={(e) => e.stopPropagation()}
                                   >
                                     Em
@@ -256,18 +287,54 @@ export function DatabaseBrowser({ onSpectrumAdd, onSpectrumRemove, selectedSpect
       {selectedCompounds.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Selected Compounds</CardTitle>
+            <CardTitle className="flex items-center justify-between">
+              <span>Selected Compounds ({selectedCompounds.length})</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  selectedCompounds.forEach(compound => handleRemoveCompound(compound.id));
+                }}
+                className="text-destructive hover:text-destructive text-xs"
+              >
+                Clear All
+              </Button>
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {selectedCompounds.map((compound) => (
-                <div key={compound.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <div className="font-medium">{compound.name}</div>
-                    <div className="text-sm text-muted-foreground">{compound.database_name}</div>
+                <div key={compound.id} className="flex items-center gap-3 p-3 border rounded-lg bg-muted/20">
+                  {/* Compound Structure Image */}
+                  <div className="flex-shrink-0 w-20 h-20 border rounded-lg overflow-hidden bg-background flex items-center justify-center relative">
+                    <Image
+                      src={getCompoundImagePath(compound)}
+                      alt={`Structure of ${compound.name}`}
+                      width={80}
+                      height={80}
+                      className="object-contain w-full h-full"
+                      onError={(e) => {
+                        // Fallback to icon if image fails to load
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        target.nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                    <ImageIcon className="h-8 w-8 text-muted-foreground hidden" />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1">
+                  
+                  {/* Compound Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-lg">{compound.name}</div>
+                    <div className="text-sm text-muted-foreground">{compound.id}</div>
+                    <div className="text-xs text-muted-foreground capitalize">
+                      {compound.database_name} • {compound.category_name}
+                    </div>
+                  </div>
+                  
+                  {/* Spectrum Controls */}
+                  <div className="flex flex-col gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-2">
                       <Checkbox
                         id={`selected-absorption-${compound.id}`}
                         checked={isSpectrumSelected(compound.id, 'absorption')}
@@ -275,11 +342,11 @@ export function DatabaseBrowser({ onSpectrumAdd, onSpectrumRemove, selectedSpect
                           handleCheckboxChange(compound, 'absorption', checked)
                         }
                       />
-                      <label htmlFor={`selected-absorption-${compound.id}`} className="text-xs">
+                      <label htmlFor={`selected-absorption-${compound.id}`} className="text-sm font-medium">
                         Absorption
                       </label>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-2">
                       <Checkbox
                         id={`selected-emission-${compound.id}`}
                         checked={isSpectrumSelected(compound.id, 'emission')}
@@ -287,7 +354,7 @@ export function DatabaseBrowser({ onSpectrumAdd, onSpectrumRemove, selectedSpect
                           handleCheckboxChange(compound, 'emission', checked)
                         }
                       />
-                      <label htmlFor={`selected-emission-${compound.id}`} className="text-xs">
+                      <label htmlFor={`selected-emission-${compound.id}`} className="text-sm font-medium">
                         Emission
                       </label>
                     </div>
@@ -295,9 +362,9 @@ export function DatabaseBrowser({ onSpectrumAdd, onSpectrumRemove, selectedSpect
                       variant="ghost"
                       size="sm"
                       onClick={() => handleRemoveCompound(compound.id)}
-                      className="text-destructive hover:text-destructive"
+                      className="text-destructive hover:text-destructive h-8 px-2"
                     >
-                      Remove
+                      <X className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>

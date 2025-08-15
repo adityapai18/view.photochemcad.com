@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { SpectrumDashboard } from '@/components/pages/spectrum-dashboard';
 import { getCompounds, getAbsorptionData, getEmissionData, getCompoundFromId, EmissionData, AbsorptionData, getDatabases } from '@/lib/database';
+import { DistributionParams } from '@/lib/distributions';
 
 interface Compound {
   id: string;
@@ -55,6 +56,55 @@ function getInitialSpectra(searchParams: SearchParams) {
   return spectra;
 }
 
+function getInitialDistributionParams(searchParams: SearchParams): DistributionParams[] {
+  const distributions: DistributionParams[] = [];
+  
+  // Find all distribution parameters
+  const distributionIndices = new Set<number>();
+  Object.keys(searchParams).forEach(key => {
+    if (key.startsWith('dist') && key.includes('Type')) {
+      const index = parseInt(key.replace('dist', '').replace('Type', ''), 10);
+      if (!isNaN(index)) {
+        distributionIndices.add(index);
+      }
+    }
+  });
+  
+  // Parse each distribution
+  Array.from(distributionIndices).sort((a, b) => a - b).forEach(index => {
+    const prefix = `dist${index}`;
+    const distributionType = searchParams[`${prefix}Type`] as string;
+    
+    if (!distributionType) return;
+    
+    const params: DistributionParams = {
+      type: distributionType as 'blackbody' | 'gaussian' | 'lorentzian',
+      lowWavelength: parseFloat(searchParams[`${prefix}LowWavelength`] as string) || 200,
+      highWavelength: parseFloat(searchParams[`${prefix}HighWavelength`] as string) || 800,
+    };
+
+    switch (distributionType) {
+      case 'blackbody':
+        params.temperature = parseFloat(searchParams[`${prefix}Temperature`] as string) || 5776;
+        break;
+      case 'gaussian':
+        params.peakWavelength = parseFloat(searchParams[`${prefix}PeakWavelength`] as string) || 300;
+        params.standardDeviation = parseFloat(searchParams[`${prefix}StandardDeviation`] as string) || 20;
+        params.gaussianMultiplier = parseFloat(searchParams[`${prefix}GaussianMultiplier`] as string) || 1;
+        break;
+      case 'lorentzian':
+        params.lorentzianPeakWavelength = parseFloat(searchParams[`${prefix}LorentzianPeakWavelength`] as string) || 300;
+        params.fwhm = parseFloat(searchParams[`${prefix}Fwhm`] as string) || 20;
+        params.lorentzianMultiplier = parseFloat(searchParams[`${prefix}LorentzianMultiplier`] as string) || 1;
+        break;
+    }
+    
+    distributions.push(params);
+  });
+
+  return distributions;
+}
+
 export default async function Home({
   searchParams,
 }: {
@@ -63,11 +113,16 @@ export default async function Home({
 
   const params = await searchParams;
   const initialSpectra = getInitialSpectra(params);
+  const initialDistributionParams = getInitialDistributionParams(params);
   const databases = getDatabases();
 
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <SpectrumDashboard selectedSpectra={initialSpectra} databases={databases} />
+      <SpectrumDashboard 
+        selectedSpectra={initialSpectra} 
+        databases={databases} 
+        initialDistributionParams={initialDistributionParams}
+      />
     </Suspense>
   );
 }
